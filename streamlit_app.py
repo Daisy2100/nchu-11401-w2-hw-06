@@ -282,19 +282,22 @@ def display_interactive_map(df):
         for idx, row in df.iterrows():
             temp_value = row[temp_col]
             
-            # 根據溫度決定顏色
+            # 根據溫度決定顏色 (莫蘭迪/粉彩色系)
             if temp_value >= 28:
-                color = "🔴"
+                color = "#E5989B"  # Muted Red
             elif temp_value >= 24:
-                color = "🟠"
+                color = "#EAC4D5"  # User's Pink
             elif temp_value >= 20:
-                color = "🟡"
+                color = "#FDE4CF"  # Muted Cream/Orange
             elif temp_value >= 16:
-                color = "🟢"
+                color = "#B8E0D2"  # User's Green
             else:
-                color = "🔵"
+                color = "#809BCE"  # User's Blue
             
-            st.markdown(f"{color} **{row['location']}**: `{temp_value:.1f}°C`")
+            st.markdown(
+                f"<span style='color:{color}; font-size: 1.2em;'>●</span> **{row['location']}**: `{temp_value:.1f}°C`", 
+                unsafe_allow_html=True
+            )
             st.caption(f"天氣: {row['weather_desc']}")
     
     with col_right:
@@ -302,13 +305,13 @@ def display_interactive_map(df):
         fig = go.Figure()
         
         # 添加散點圖（地區標記）
-        fig.add_trace(go.Scattergeo(
+        fig.add_trace(go.Scattermapbox(
             lon=df['lon'],
             lat=df['lat'],
             text=df['location'] + '<br>' + df[temp_col].round(1).astype(str) + '°C',
             mode='markers+text',
             marker=dict(
-                size=df[temp_col] * 2,
+                size=df[temp_col],
                 color=df[temp_col],
                 colorscale=color_scale,
                 showscale=True,
@@ -316,32 +319,19 @@ def display_interactive_map(df):
                     title="溫度 (°C)",
                     x=1.02
                 ),
-                line=dict(width=1, color='white')
             ),
-            textposition="top center",
+            textposition="top right",
             textfont=dict(size=12, color='black', family='Arial Black'),
             hovertemplate='<b>%{text}</b><extra></extra>'
         ))
         
-        # 設定地圖樣式 - 類似中央氣象局的配色
-        fig.update_geos(
-            center=dict(lon=120.9, lat=23.7),
-            projection_scale=35,
-            visible=True,
-            resolution=50,
-            showcountries=True,
-            countrycolor="darkgray",
-            showcoastlines=True,
-            coastlinecolor="darkgray",
-            showland=True,
-            landcolor="white",  # 改為白色陸地
-            showocean=True,
-            oceancolor="#E8F4F8",  # 淺藍色海洋
-            projection_type="mercator",
-            bgcolor="white"  # 背景改為白色
-        )
-        
+        # 設定地圖樣式 (Google Map Style)
         fig.update_layout(
+            mapbox_style="open-street-map",
+            mapbox=dict(
+                center=dict(lon=120.9, lat=23.7),
+                zoom=6.5
+            ),
             title=dict(
                 text=f"台灣 {title}<br><sub>{datetime.now().strftime('%Y/%m/%d %H:%M')}</sub>",
                 x=0.5,
@@ -349,10 +339,6 @@ def display_interactive_map(df):
             ),
             height=600,
             margin=dict(l=0, r=0, t=50, b=0),
-            geo=dict(
-                lonaxis=dict(range=[119.5, 122.5]),
-                lataxis=dict(range=[21.5, 25.5])
-            )
         )
         
         st.plotly_chart(fig, use_container_width=True)
