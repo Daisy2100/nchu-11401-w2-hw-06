@@ -67,7 +67,7 @@ python part2_movie_crawler.py
 
 ### 方法二：使用 Docker
 
-#### 1. 先執行爬蟲取得資料（在本地）
+#### 1. 先執行爬蟲取得資料（在本地）（是clone這個專案的話，已經執行過了）
 ```bash
 pip install -r requirements.txt
 python part1_cwa_weather.py

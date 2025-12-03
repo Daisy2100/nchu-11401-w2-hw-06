@@ -8,7 +8,8 @@ import sqlite3
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
 
 # 頁面設定
 st.set_page_config(
@@ -209,6 +210,159 @@ def display_temperature_chart(df):
         
         st.plotly_chart(fig, use_container_width=True)
 
+def get_region_coordinates():
+    """取得台灣各地區的經緯度座標"""
+    coordinates = {
+        '北部地區': {'lat': 25.0330, 'lon': 121.5654},
+        '中部地區': {'lat': 24.1477, 'lon': 120.6736},
+        '南部地區': {'lat': 22.6273, 'lon': 120.3014},
+        '東北部地區': {'lat': 24.7021, 'lon': 121.7378},
+        '東部地區': {'lat': 23.9871, 'lon': 121.6015},
+        '東南部地區': {'lat': 22.7583, 'lon': 121.1444}
+    }
+    return coordinates
+
+def display_interactive_map(df):
+    """顯示互動式溫度分布圖"""
+    st.subheader("🗺️ 互動式溫度分布圖")
+    
+    # 控制面板
+    col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
+    
+    with col1:
+        time_option = st.radio(
+            "時間選擇",
+            ["今日", "平均值"],
+            horizontal=True,
+            help="選擇要顯示的時間範圍"
+        )
+    
+    with col2:
+        temp_type = st.radio(
+            "溫度類型",
+            ["最高溫", "最低溫", "平均溫"],
+            horizontal=True
+        )
+    
+    with col3:
+        show_values = st.checkbox("顯示數據", value=True)
+    
+    with col4:
+        auto_refresh = st.checkbox("自動更新", value=False)
+    
+    # 根據選擇顯示不同溫度
+    if temp_type == "最高溫":
+        temp_col = 'max_temp'
+        title = "最高溫度分布圖"
+        color_scale = "Reds"
+    elif temp_type == "最低溫":
+        temp_col = 'min_temp'
+        title = "最低溫度分布圖"
+        color_scale = "Blues"
+    else:
+        df['avg_temp'] = (df['max_temp'] + df['min_temp']) / 2
+        temp_col = 'avg_temp'
+        title = "平均溫度分布圖"
+        color_scale = "RdYlBu_r"
+    
+    # 添加座標資訊
+    coordinates = get_region_coordinates()
+    df['lat'] = df['location'].map(lambda x: coordinates.get(x, {}).get('lat', 23.5))
+    df['lon'] = df['location'].map(lambda x: coordinates.get(x, {}).get('lon', 121.0))
+    
+    # 創建左右兩欄布局
+    col_left, col_right = st.columns([1, 2])
+    
+    with col_left:
+        # 左側：溫度列表
+        st.markdown(f"### 📋 {title}")
+        st.markdown(f"**更新時間**: {datetime.now().strftime('%Y/%m/%d %H:%M')}")
+        st.markdown("---")
+        
+        for idx, row in df.iterrows():
+            temp_value = row[temp_col]
+            
+            # 根據溫度決定顏色
+            if temp_value >= 28:
+                color = "🔴"
+            elif temp_value >= 24:
+                color = "🟠"
+            elif temp_value >= 20:
+                color = "🟡"
+            elif temp_value >= 16:
+                color = "🟢"
+            else:
+                color = "🔵"
+            
+            st.markdown(f"{color} **{row['location']}**: `{temp_value:.1f}°C`")
+            st.caption(f"天氣: {row['weather_desc']}")
+    
+    with col_right:
+        # 右側：台灣地圖
+        fig = go.Figure()
+        
+        # 添加散點圖（地區標記）
+        fig.add_trace(go.Scattergeo(
+            lon=df['lon'],
+            lat=df['lat'],
+            text=df['location'] + '<br>' + df[temp_col].round(1).astype(str) + '°C',
+            mode='markers+text',
+            marker=dict(
+                size=df[temp_col] * 2,
+                color=df[temp_col],
+                colorscale=color_scale,
+                showscale=True,
+                colorbar=dict(
+                    title="溫度 (°C)",
+                    x=1.02
+                ),
+                line=dict(width=1, color='white')
+            ),
+            textposition="top center",
+            textfont=dict(size=12, color='black', family='Arial Black'),
+            hovertemplate='<b>%{text}</b><extra></extra>'
+        ))
+        
+        # 設定地圖樣式 - 類似中央氣象局的配色
+        fig.update_geos(
+            center=dict(lon=120.9, lat=23.7),
+            projection_scale=35,
+            visible=True,
+            resolution=50,
+            showcountries=True,
+            countrycolor="darkgray",
+            showcoastlines=True,
+            coastlinecolor="darkgray",
+            showland=True,
+            landcolor="white",  # 改為白色陸地
+            showocean=True,
+            oceancolor="#E8F4F8",  # 淺藍色海洋
+            projection_type="mercator",
+            bgcolor="white"  # 背景改為白色
+        )
+        
+        fig.update_layout(
+            title=dict(
+                text=f"台灣 {title}<br><sub>{datetime.now().strftime('%Y/%m/%d %H:%M')}</sub>",
+                x=0.5,
+                xanchor='center'
+            ),
+            height=600,
+            margin=dict(l=0, r=0, t=50, b=0),
+            geo=dict(
+                lonaxis=dict(range=[119.5, 122.5]),
+                lataxis=dict(range=[21.5, 25.5])
+            )
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # 如果啟用自動更新
+    if auto_refresh:
+        st.info("⏱️ 資料將每30秒自動更新一次")
+        time.sleep(30)
+        st.rerun()
+
 def display_top_locations(df):
     """顯示溫度排行"""
     st.subheader("🏆 溫度排行榜")
@@ -264,6 +418,10 @@ def main():
         return
     
     # 顯示內容
+    # 最上方：互動式溫度分布圖
+    display_interactive_map(df)
+    st.markdown("---")
+    
     display_statistics(df)
     st.markdown("---")
     
