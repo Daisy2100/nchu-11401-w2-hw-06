@@ -1,71 +1,98 @@
-# nchu-11401-w2-hw-06 — Lecture 13 課堂練習
+# NCHU 11401 Week 2 Homework 06 - Lecture 13 課堂練習
 
-此專案包含兩部分作業：
-1. **Part 1**: 中央氣象局資料爬蟲 + SQLite + Streamlit
-2. **Part 2**: 電影網站爬蟲 + CSV 輸出
+## 📚 課堂練習：資料爬蟲 + SQLite + Streamlit
+
+這個專案包含兩個主要部分：
+1. **Part 1**: 中央氣象局 (CWA) 天氣資料爬蟲與視覺化
+2. **Part 2**: SSR 電影網站爬蟲
+
+---
 
 ## 🗂️ 專案結構
 
 ```
-.
-├── Dockerfile              # SQLite Docker 容器
-├── docker-compose.yml      # Docker Compose 設定
-├── requirements.txt        # Python 依賴套件
-├── part1_weather.py        # Part 1: 天氣資料爬蟲
-├── app_streamlit.py        # Streamlit 應用
-├── movies_crawler.py       # Part 2: 電影爬蟲
-├── data/                   # 資料目錄（掛載到 Docker）
-│   └── data.db            # SQLite 資料庫（執行後產生）
-└── movie.csv              # 電影資料 CSV（執行後產生）
+nchu-11401-w2-hw-06/
+├── part1_cwa_weather.py      # Part 1: CWA 天氣爬蟲
+├── streamlit_app.py           # Part 1: Streamlit 視覺化應用
+├── init_db.sql                # SQLite 資料庫初始化腳本
+├── part2_movie_crawler.py     # Part 2: 電影爬蟲
+├── requirements.txt           # Python 依賴套件
+├── Dockerfile                 # Docker 映像檔
+├── docker-compose.yml         # Docker Compose 設定
+├── .gitignore                 # Git 忽略檔案
+├── data.db                    # SQLite 資料庫（執行後產生）
+└── movie.csv                  # 電影資料 CSV（執行後產生）
 ```
 
 ## 🚀 快速開始
 
-### 1. 建立資料夾
+### 方法一：本地執行（推薦）
+
+#### 1. 安裝 Python 依賴
 ```bash
-mkdir -p data
+pip install -r requirements.txt
 ```
 
-### 2. 啟動 Docker 容器
+#### 2. 執行 Part 1：天氣資料爬蟲
+```bash
+python part1_cwa_weather.py
+```
+
+這會：
+- 使用 CWA OpenData API 下載 F-A0010-001 資料集
+- 解析各地區的天氣資訊（最低溫、最高溫、天氣描述、降雨機率）
+- 將資料存入 `data.db` 的 `weather` 表
+
+#### 3. 啟動 Streamlit 應用
+```bash
+streamlit run streamlit_app.py
+```
+
+開啟瀏覽器訪問 `http://localhost:8501`，你會看到：
+- 📊 統計資訊儀表板
+- 🗂️ 可搜尋與排序的天氣資料表
+- 📈 溫度分布圖表（長條圖、散點圖、箱型圖）
+- 🏆 溫度排行榜
+
+**📸 記得截圖此頁面作為作業證明！**
+
+#### 4. 執行 Part 2：電影爬蟲
+```bash
+python part2_movie_crawler.py
+```
+
+這會爬取 `https://ssr1.scrape.center/` 的 1-10 頁，並產生 `movie.csv`。
+
+---
+
+### 方法二：使用 Docker
+
+#### 1. 先執行爬蟲取得資料（在本地）
+```bash
+pip install -r requirements.txt
+python part1_cwa_weather.py
+python part2_movie_crawler.py
+```
+
+#### 2. 啟動 Docker 容器
 ```bash
 docker-compose up -d --build
 ```
 
-這會建立一個包含 SQLite3 的容器，並將本機 `./data` 掛載到容器內。
-
-### 3. 安裝 Python 依賴
-建議使用虛擬環境：
-```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+#### 3. 在瀏覽器開啟
+```
+http://localhost:8501
 ```
 
-### 4. 執行 Part 1：天氣資料爬蟲
+#### 4. 查看日誌
 ```bash
-python part1_weather.py
+docker-compose logs -f
 ```
 
-這會：
-- 從中央氣象局下載 JSON 資料
-- 解析各地區的天氣資訊
-- 將資料存入 `./data/data.db` 的 `weather` 表
-
-### 5. 啟動 Streamlit 應用
+#### 5. 停止服務
 ```bash
-streamlit run app_streamlit.py
+docker-compose down
 ```
-
-開啟瀏覽器訪問 `http://localhost:8501`，你會看到天氣資料表格。
-
-**📸 記得截圖此頁面作為作業證明！**
-
-### 6. 執行 Part 2：電影爬蟲
-```bash
-python movies_crawler.py
-```
-
-這會爬取 `https://ssr1.scrape.center/` 的 1-10 頁，並產生 `movie.csv`。
 
 ## 📊 資料庫結構
 
