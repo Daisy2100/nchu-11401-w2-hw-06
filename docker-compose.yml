@@ -1,0 +1,9 @@
+version: "3.8"
+
+services:
+  sqlite:
+    build: .
+    container_name: nchu_sqlite
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
