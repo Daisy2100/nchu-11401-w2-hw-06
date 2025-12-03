@@ -31,9 +31,11 @@ def parse_weather_data(data):
     weather_records = []
     
     try:
-        # 取得資料集
-        dataset = data.get('cwaopendata', {}).get('dataset', {})
-        locations = dataset.get('locations', [{}])[0].get('location', [])
+        # 取得資料集 - 正確的路徑
+        resource = data.get('cwaopendata', {}).get('resources', {}).get('resource', {})
+        agr_forecasts = resource.get('data', {}).get('agrWeatherForecasts', {})
+        weather_forecasts = agr_forecasts.get('weatherForecasts', {})
+        locations = weather_forecasts.get('location', [])
         
         print(f"\n正在解析 {len(locations)} 個地區的天氣資料...")
         
@@ -41,7 +43,7 @@ def parse_weather_data(data):
             location_name = location.get('locationName', 'N/A')
             
             # 取得天氣元素
-            weather_elements = location.get('weatherElement', [])
+            weather_elements = location.get('weatherElements', {})
             
             # 初始化資料記錄
             record = {
@@ -53,32 +55,49 @@ def parse_weather_data(data):
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
-            # 解析各種天氣元素
-            for element in weather_elements:
-                element_name = element.get('elementName', '')
-                time_data = element.get('time', [])
-                
-                if time_data:
-                    first_time = time_data[0]
-                    parameter = first_time.get('parameter', {})
-                    
-                    if element_name == 'MinT':  # 最低溫度
-                        record['min_temp'] = parameter.get('parameterName', 'N/A')
-                    elif element_name == 'MaxT':  # 最高溫度
-                        record['max_temp'] = parameter.get('parameterName', 'N/A')
-                    elif element_name == 'Wx':  # 天氣現象
-                        record['weather_desc'] = parameter.get('parameterName', 'N/A')
-                    elif element_name == 'PoP':  # 降雨機率
-                        record['pop'] = parameter.get('parameterName', 'N/A')
+            # 解析最高溫度
+            max_temp_data = weather_elements.get('MaxT', {})
+            daily_max_temps = max_temp_data.get('daily', [])
+            
+            if daily_max_temps:
+                first_day = daily_max_temps[0]
+                record['max_temp'] = first_day.get('temperature', 'N/A')
+            
+            # 解析最低溫度
+            min_temp_data = weather_elements.get('MinT', {})
+            daily_min_temps = min_temp_data.get('daily', [])
+            
+            if daily_min_temps:
+                first_day = daily_min_temps[0]
+                record['min_temp'] = first_day.get('temperature', 'N/A')
+            
+            # 解析天氣描述
+            wx_data = weather_elements.get('Wx', {})
+            daily_wx = wx_data.get('daily', [])
+            
+            if daily_wx:
+                first_day_wx = daily_wx[0]
+                record['weather_desc'] = first_day_wx.get('weather', 'N/A')
+            
+            # 降雨機率 (如果有的話)
+            pop_data = weather_elements.get('PoP', {})
+            daily_pop = pop_data.get('daily', [])
+            
+            if daily_pop:
+                first_day_pop = daily_pop[0]
+                pop_value = first_day_pop.get('value', 'N/A')
+                record['pop'] = f"{pop_value}%" if pop_value != 'N/A' else 'N/A'
             
             weather_records.append(record)
-            print(f"  ✓ {location_name}: 最低溫 {record['min_temp']}°C, 最高溫 {record['max_temp']}°C")
+            print(f"  ✓ {location_name}: 最低溫 {record['min_temp']}°C, 最高溫 {record['max_temp']}°C, 天氣: {record['weather_desc']}")
         
         print(f"\n✓ 成功解析 {len(weather_records)} 筆天氣資料")
         return weather_records
         
     except Exception as e:
         print(f"✗ 解析資料時發生錯誤: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def init_database():
